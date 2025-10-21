@@ -1,4 +1,4 @@
-name: Deploy to App Engine
+name: Deploy to Cloud Run Function
 
 on:
   push:
@@ -25,7 +25,16 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
     
-    # 部署到 App Engine
-    - name: Deploy to App Engine
-      run: gcloud app deploy --quiet
+    # 部署到 Cloud Run Function
+    - name: Deploy to Cloud Run Function
+      run: |
+        gcloud functions deploy hello_http_cicd \
+          --gen2 \
+          --runtime=python311 \
+          --region=asia-east1 \
+          --source=. \
+          --entry-point=main \
+          --trigger=http \
+          --allow-unauthenticated \
+          --quiet
 
