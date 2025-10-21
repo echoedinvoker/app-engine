@@ -33,7 +33,7 @@ jobs:
           --runtime=python311 \
           --region=asia-east1 \
           --source=. \
-          --entry-point=main \
+          --entry-point=hello_http_cicd \
           --trigger-http \
           --allow-unauthenticated \
           --quiet
