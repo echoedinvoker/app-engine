@@ -8,6 +8,12 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: asia-east1
+  SERVICE: app-engine-service
+  REGION: asia-east1
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -25,16 +31,38 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
     
-    # 部署到 Cloud Run Function
-    - name: Deploy to Cloud Run Function
+    # 設定 Docker 認證
+    - name: Configure Docker to use gcloud as credential helper
       run: |
-        gcloud functions deploy hello_http_cicd \
-          --gen2 \
-          --runtime=python311 \
-          --region=asia-east1 \
-          --source=. \
-          --entry-point=hello_http_cicd \
-          --trigger-http \
+        gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev
+    
+    # 建立 Artifact Registry repository (如果不存在)
+    - name: Create Artifact Registry repository
+      run: |
+        gcloud artifacts repositories create $SERVICE \
+          --repository-format=docker \
+          --location=$GAR_LOCATION \
+          --description="Docker repository for $SERVICE" || true
+    
+    # 建立並推送 Docker image
+    - name: Build and Push Container
+      run: |
+        docker build -t "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$SERVICE/$SERVICE:$GITHUB_SHA" .
+        docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$SERVICE/$SERVICE:$GITHUB_SHA"
+    
+    # 部署到 Cloud Run
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy $SERVICE \
+          --image=$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$SERVICE/$SERVICE:$GITHUB_SHA \
+          --region=$REGION \
           --allow-unauthenticated \
+          --port=8080 \
+          --memory=512Mi \
+          --cpu=1 \
           --quiet
-
+    
+    # 顯示部署結果
+    - name: Show service URL
+      run: |
+        gcloud run services describe $SERVICE --region=$REGION --format='value(status.url)'
