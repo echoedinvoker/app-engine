@@ -13,7 +13,7 @@ env:
   GAR_LOCATION: asia-east1
   SERVICE: app-engine-service
   REGION: asia-east1
-  REPOSITORY: myapp  # 簡化的 repository 名稱
+  REPOSITORY: docker-basics
 
 jobs:
   deploy:
