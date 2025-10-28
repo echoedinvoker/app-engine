@@ -3,8 +3,6 @@ name: Deploy to GKE
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -18,7 +16,6 @@ jobs:
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     permissions:
       contents: read
@@ -37,6 +34,11 @@ jobs:
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
+
+    # 重要：安裝 gke-gcloud-auth-plugin, 否則 cicd 會出現 kubectl 無法認證 GKE 的錯誤
+    - name: Install GKE gcloud auth plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
 
     # 配置 Docker 認證
     - name: Configure Docker
@@ -60,9 +62,7 @@ jobs:
     # 使用 Kustomize 部署
     - name: Deploy to GKE
       run: |
-        cd k8s
-        kustomize edit set image us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE=us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
-        kustomize build . | kubectl apply -f -
+        kubectl set image deployment/$DEPLOYMENT_NAME $DEPLOYMENT_NAME=us-central1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:$GITHUB_SHA
         kubectl rollout status deployment/$DEPLOYMENT_NAME
         kubectl get services -o wide
 
